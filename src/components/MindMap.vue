@@ -5,13 +5,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import MindMap from 'simple-mind-map'
-import Export from 'simple-mind-map/src/plugins/Export.js'
+
 import type { MindMapNode } from '@/types'
 
-// 注册导出插件
-MindMap.usePlugin(Export)
+
 
 const props = defineProps<{
   modelValue?: MindMapNode
@@ -53,6 +52,12 @@ const defaultData: MindMapNode = {
 
 onMounted(() => {
   initMindMap()
+  // 在组件完全挂载后使用 300ms 延迟调用 fit()，确保 elRect 已更新
+  setTimeout(() => {
+    if (mindMap) {
+      mindMap.view.fit()
+    }
+  }, 300)
 })
 
 onUnmounted(() => {
@@ -77,6 +82,8 @@ function initMindMap() {
     scaleRatio: 0.1,
     maxScale: 3,
     minScale: 0.3,
+    // 首次渲染时自动适应画布大小并居中
+    fit: true,
     // 节点样式配置
     nodeTextEditZIndex: 1000,
     expandBtnSize: 20,
