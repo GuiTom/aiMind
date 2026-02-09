@@ -29,6 +29,9 @@
       <el-tooltip content="删除节点 (Delete)" placement="bottom">
         <el-button @click="removeNode" :icon="Delete">删除</el-button>
       </el-tooltip>
+      <el-tooltip content="添加/编辑注释" placement="bottom">
+        <el-button @click="openNoteDialog" :icon="ChatLineSquare">注释</el-button>
+      </el-tooltip>
     </div>
 
     <div class="toolbar-divider"></div>
@@ -85,6 +88,27 @@
       @change="handleImport" 
       style="display: none"
     />
+
+    <!-- 注释编辑对话框 -->
+    <el-dialog 
+      v-model="noteDialogVisible" 
+      title="编辑节点注释" 
+      width="500px"
+    >
+      <el-input
+        v-model="noteText"
+        type="textarea"
+        :rows="6"
+        placeholder="请输入注释内容..."
+        maxlength="500"
+        show-word-limit
+      />
+      <template #footer>
+        <el-button @click="noteDialogVisible = false">取消</el-button>
+        <el-button @click="clearNote" type="warning">清除注释</el-button>
+        <el-button @click="saveNote" type="primary">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -94,7 +118,7 @@ import {
   Plus, CirclePlus, Delete, 
   ZoomIn, ZoomOut, FullScreen,
   Download, ArrowDown, Upload,
-  Document, Files, Picture
+  Document, Files, Picture, ChatLineSquare
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { exportToJson, exportToXml } from '@/utils/export'
@@ -106,6 +130,9 @@ const props = defineProps<{
 
 const zoom = ref(1)
 const fileInputRef = ref<HTMLInputElement>()
+const noteDialogVisible = ref(false)
+const noteText = ref('')
+const currentNode = ref<any>(null)
 
 // 节点操作
 function addChild() {
@@ -156,6 +183,41 @@ function fitView() {
   if (!props.mindMap) return
   props.mindMap.view.fit()
   zoom.value = 1
+}
+
+// 注释功能
+function openNoteDialog() {
+  if (!props.mindMap) return
+  const activeNodes = props.mindMap.renderer.activeNodeList
+  if (activeNodes.length === 0) {
+    ElMessage.warning('请先选择一个节点')
+    return
+  }
+  currentNode.value = activeNodes[0]
+  noteText.value = currentNode.value.getData('note') || ''
+  noteDialogVisible.value = true
+}
+
+function saveNote() {
+  if (!currentNode.value) return
+  props.mindMap?.execCommand('SET_NODE_NOTE', currentNode.value, noteText.value)
+  noteDialogVisible.value = false
+  ElMessage.success('注释已保存')
+}
+
+function clearNote() {
+  if (!currentNode.value) return
+  props.mindMap?.execCommand('SET_NODE_NOTE', currentNode.value, '')
+  noteText.value = ''
+  noteDialogVisible.value = false
+  ElMessage.success('注释已清除')
+}
+
+// 从外部打开注释对话框（用于右键菜单）
+function openNoteDialogWithNode(node: any) {
+  currentNode.value = node
+  noteText.value = node.getData('note') || ''
+  noteDialogVisible.value = true
 }
 
 // 导入功能
@@ -227,4 +289,9 @@ async function handleExport(command: string) {
     console.error('Export error:', error)
   }
 }
+
+// 暴露方法给父组件
+defineExpose({
+  openNoteDialogWithNode
+})
 </script>

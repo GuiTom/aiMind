@@ -1,10 +1,11 @@
 <template>
   <div class="app-container">
-    <Toolbar :mindMap="mindMap" />
+    <Toolbar ref="toolbarRef" :mindMap="mindMap" />
     <div class="mind-map-wrapper">
       <MindMap 
         v-model="mapData" 
-        @mindMapReady="onMindMapReady" 
+        @mindMapReady="onMindMapReady"
+        @openNote="onOpenNote"
       />
       <div class="tips">
         <span>💡 双击节点编辑文字</span>
@@ -28,8 +29,17 @@ import type { MindMapNode } from '@/types'
 
 const mapData = ref<MindMapNode>()
 const mindMap = shallowRef<MindMapInstance | null>(null)
+const toolbarRef = ref<InstanceType<typeof Toolbar>>()
 
 function onMindMapReady(instance: MindMapInstance) {
   mindMap.value = instance
+}
+
+function onOpenNote(node: any) {
+  // 调用 Toolbar 的注释功能
+  if (toolbarRef.value) {
+    // @ts-ignore - 访问 Toolbar 内部方法
+    toolbarRef.value.openNoteDialogWithNode(node)
+  }
 }
 </script>

@@ -23,6 +23,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', value: MindMapNode): void
   (e: 'mindMapReady', mindMap: MindMap): void
+  (e: 'openNote', node: any): void
 }>()
 
 const containerRef = ref<HTMLElement>()
@@ -102,8 +103,108 @@ function initMindMap() {
     emit('update:modelValue', data)
   })
 
+  // 监听节点右键点击事件
+  mindMap.on('node_contextmenu', (e: MouseEvent, node: any) => {
+    e.preventDefault()
+    showContextMenu(node, e)
+  })
+
   // 通知父组件 mindMap 实例已就绪
   emit('mindMapReady', mindMap)
+}
+
+// 自定义右键菜单
+let contextMenuEl: HTMLElement | null = null
+
+function showContextMenu(node: any, e: MouseEvent) {
+  // 移除旧菜单
+  if (contextMenuEl) {
+    contextMenuEl.remove()
+    contextMenuEl = null
+  }
+
+  // 创建菜单
+  const menu = document.createElement('div')
+  menu.className = 'custom-context-menu'
+  menu.style.cssText = `
+    position: fixed;
+    left: ${e.clientX}px;
+    top: ${e.clientY}px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    padding: 4px 0;
+    z-index: 10000;
+    min-width: 140px;
+  `
+
+  const menuItems = [
+    {
+      label: '添加子节点',
+      action: () => {
+        mindMap?.execCommand('INSERT_CHILD_NODE')
+      }
+    },
+    {
+      label: '添加同级节点',
+      action: () => {
+        mindMap?.execCommand('INSERT_NODE')
+      }
+    },
+    {
+      label: '删除节点',
+      disabled: node.isRoot,
+      action: () => {
+        if (!node.isRoot) {
+          mindMap?.execCommand('REMOVE_NODE')
+        }
+      }
+    },
+    {
+      label: '添加/编辑注释',
+      action: () => {
+        emit('openNote', node)
+      }
+    }
+  ]
+
+  menuItems.forEach(item => {
+    const menuItem = document.createElement('div')
+    menuItem.textContent = item.label
+    menuItem.style.cssText = `
+      padding: 8px 16px;
+      cursor: ${item.disabled ? 'not-allowed' : 'pointer'};
+      color: ${item.disabled ? '#ccc' : '#333'};
+      font-size: 14px;
+      transition: background 0.2s;
+    `
+    if (!item.disabled) {
+      menuItem.onmouseenter = () => menuItem.style.background = '#f5f5f5'
+      menuItem.onmouseleave = () => menuItem.style.background = 'transparent'
+      menuItem.onclick = (e) => {
+        e.stopPropagation() // 阻止事件冒泡
+        removeMenu() // 先移除菜单
+        // 使用 setTimeout 延迟执行 action，确保菜单已完全移除
+        setTimeout(() => item.action(), 10)
+      }
+    }
+    menu.appendChild(menuItem)
+  })
+
+  document.body.appendChild(menu)
+  contextMenuEl = menu
+
+  // 点击其他地方关闭菜单
+  setTimeout(() => document.addEventListener('click', removeMenu), 0)
+}
+
+function removeMenu() {
+  if (contextMenuEl) {
+    contextMenuEl.remove()
+    contextMenuEl = null
+    document.removeEventListener('click', removeMenu)
+  }
 }
 
 // 暴露方法给父组件
