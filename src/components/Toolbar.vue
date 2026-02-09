@@ -143,7 +143,9 @@ async function handleExport(command: string) {
   if (!props.mindMap) return
 
   const data = props.mindMap.getData(false)
-  const fileName = 'mindmap-' + new Date().toISOString().slice(0, 10)
+  // 使用中心主题的文本作为文件名，去除特殊字符
+  const rootText = data?.data?.text || '思维导图'
+  const fileName = rootText.replace(/[\\/:*?"<>|]/g, '_').trim()
 
   try {
     switch (command) {
