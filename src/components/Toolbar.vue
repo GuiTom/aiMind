@@ -44,8 +44,9 @@
     <div class="toolbar-divider"></div>
 
     <!-- 导出菜单 -->
-    <el-dropdown @command="handleExport" trigger="click" popper-class="export-dropdown">
-      <el-button type="primary" :icon="Download">
+    <el-dropdown trigger="click" @command="handleExport" popper-class="export-dropdown">
+      <el-button type="primary">
+        <el-icon><Download /></el-icon>
         导出
         <el-icon class="el-icon--right"><ArrowDown /></el-icon>
       </el-button>
@@ -54,6 +55,10 @@
           <el-dropdown-item command="json">
             <el-icon><Document /></el-icon>
             导出为 JSON
+          </el-dropdown-item>
+          <el-dropdown-item command="aim">
+            <el-icon><Files /></el-icon>
+            导出为 AIM 文件
           </el-dropdown-item>
           <el-dropdown-item command="xml">
             <el-icon><Files /></el-icon>
@@ -66,6 +71,20 @@
         </el-dropdown-menu>
       </template>
     </el-dropdown>
+    
+    <el-tooltip content="导入 AIM/JSON 文件" placement="bottom">
+      <el-button @click="triggerImport">
+        <el-icon><Upload /></el-icon>
+        导入
+      </el-button>
+    </el-tooltip>
+    <input 
+      ref="fileInputRef" 
+      type="file" 
+      accept=".aim,.json" 
+      @change="handleImport" 
+      style="display: none"
+    />
   </div>
 </template>
 
@@ -74,7 +93,7 @@ import { ref } from 'vue'
 import { 
   Plus, CirclePlus, Delete, 
   ZoomIn, ZoomOut, FullScreen,
-  Download, ArrowDown,
+  Download, ArrowDown, Upload,
   Document, Files, Picture
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -86,6 +105,7 @@ const props = defineProps<{
 }>()
 
 const zoom = ref(1)
+const fileInputRef = ref<HTMLInputElement>()
 
 // 节点操作
 function addChild() {
@@ -138,6 +158,34 @@ function fitView() {
   zoom.value = 1
 }
 
+// 导入功能
+function triggerImport() {
+  fileInputRef.value?.click()
+}
+
+async function handleImport(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file || !props.mindMap) return
+
+  try {
+    const text = await file.text()
+    const data = JSON.parse(text)
+    
+    // 设置新数据
+    props.mindMap.setData(data)
+    ElMessage.success('导入成功')
+    
+    // 清空文件输入
+    if (fileInputRef.value) {
+      fileInputRef.value.value = ''
+    }
+  } catch (error) {
+    ElMessage.error('导入失败，文件格式错误')
+    console.error('Import error:', error)
+  }
+}
+
 // 导出处理
 async function handleExport(command: string) {
   if (!props.mindMap) return
@@ -152,6 +200,17 @@ async function handleExport(command: string) {
       case 'json':
         exportToJson(data, fileName)
         ElMessage.success('JSON 文件已导出')
+        break
+      case 'aim':
+        // AIM 格式与 JSON 相同，只是扩展名不同
+        const aimBlob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+        const aimUrl = URL.createObjectURL(aimBlob)
+        const aimLink = document.createElement('a')
+        aimLink.href = aimUrl
+        aimLink.download = `${fileName}.aim`
+        aimLink.click()
+        URL.revokeObjectURL(aimUrl)
+        ElMessage.success('AIM 文件已导出')
         break
       case 'xml':
         exportToXml(data, fileName)
