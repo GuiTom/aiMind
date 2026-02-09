@@ -1,6 +1,22 @@
 <template>
   <div class="mind-map-container" ref="containerRef">
     <div id="mindMapContainer"></div>
+    
+    <!-- 注释浮层 -->
+    <div 
+      v-if="notePopupVisible" 
+      class="note-popup"
+      :style="{
+        left: notePopupPosition.x + 'px',
+        top: notePopupPosition.y + 'px'
+      }"
+    >
+      <div class="note-popup-header">
+        <span class="note-popup-title">节点注释</span>
+        <button class="note-popup-close" @click="closeNotePopup">×</button>
+      </div>
+      <div class="note-popup-content" v-html="notePopupContent"></div>
+    </div>
   </div>
 </template>
 
@@ -28,6 +44,11 @@ const emit = defineEmits<{
 
 const containerRef = ref<HTMLElement>()
 let mindMap: MindMap | null = null
+
+// 注释浮层状态
+const notePopupVisible = ref(false)
+const notePopupContent = ref('')
+const notePopupPosition = ref({ x: 0, y: 0 })
 
 // 默认思维导图数据
 const defaultData: MindMapNode = {
@@ -107,6 +128,13 @@ function initMindMap() {
   mindMap.on('node_contextmenu', (e: MouseEvent, node: any) => {
     e.preventDefault()
     showContextMenu(node, e)
+  })
+
+  // 监听注释图标点击事件
+  mindMap.on('node_note_click', (node: any, e: MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    showNotePopup(node, e)
   })
 
   // 通知父组件 mindMap 实例已就绪
@@ -207,6 +235,65 @@ function removeMenu() {
   }
 }
 
+// 将文本中的 URL 转换为可点击的链接
+function convertUrlsToLinks(text: string): string {
+  // URL 正则表达式
+  const urlRegex = /(https?:\/\/[^\s]+)/g
+  return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>')
+}
+
+// 显示注释浮层
+function showNotePopup(node: any, e: MouseEvent) {
+  const noteContent = node.getData('note')
+  if (!noteContent) return
+
+  // 关闭右键菜单（如果打开）
+  removeMenu()
+
+  // 转换 URL 为链接，同时转换换行符为 <br>
+  const contentWithLinks = convertUrlsToLinks(noteContent)
+    .replace(/\n/g, '<br>')
+  
+  notePopupContent.value = contentWithLinks
+  
+  // 计算浮层位置（根据鼠标点击位置）
+  notePopupPosition.value = {
+    x: e.clientX + 10,
+    y: e.clientY + 10
+  }
+  
+  notePopupVisible.value = true
+
+  // 点击其他地方关闭浮层
+  setTimeout(() => {
+    document.addEventListener('click', closeNotePopup)
+  }, 0)
+}
+
+// 关闭注释浮层
+function closeNotePopup(e?: Event) {
+  if (e) {
+    const target = e.target as HTMLElement
+    
+    // 如果点击的是浮层内的链接，不关闭（让链接正常打开）
+    if (target.tagName === 'A') {
+      return
+    }
+    
+    // 如果点击的是浮层内部（除了关闭按钮），不关闭
+    const popup = target.closest('.note-popup')
+    const closeBtn = target.closest('.note-popup-close')
+    
+    if (popup && !closeBtn) {
+      return
+    }
+  }
+  
+  notePopupVisible.value = false
+  notePopupContent.value = ''
+  document.removeEventListener('click', closeNotePopup)
+}
+
 // 暴露方法给父组件
 defineExpose({
   getMindMap: () => mindMap
@@ -236,5 +323,89 @@ defineExpose({
 
 :deep(.smm-node-text) {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* 注释浮层样式 */
+.note-popup {
+  position: fixed;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  max-width: 400px;
+  z-index: 10001;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.note-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
+  border-radius: 8px 8px 0 0;
+}
+
+.note-popup-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+.note-popup-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.note-popup-close:hover {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.note-popup-content {
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #555;
+  max-height: 300px;
+  overflow-y: auto;
+  word-wrap: break-word;
+}
+
+/* 注释中的链接样式 */
+.note-popup-content :deep(a) {
+  color: #1890ff;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.note-popup-content :deep(a:hover) {
+  border-bottom-color: #1890ff;
 }
 </style>
