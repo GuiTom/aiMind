@@ -7,8 +7,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import MindMap from 'simple-mind-map'
-
+import Export from 'simple-mind-map/src/plugins/Export.js'
 import type { MindMapNode } from '@/types'
+
+// 注册导出插件
+// @ts-ignore - usePlugin 方法在运行时存在，但类型定义中缺失
+MindMap.usePlugin(Export)
 
 
 
