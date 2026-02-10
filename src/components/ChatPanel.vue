@@ -76,7 +76,7 @@
           <textarea
             ref="chatInputRef"
             v-model="userInput"
-            :placeholder="targetNode ? `针对「${targetNode.text}」提问，AI 将扩展子节点...` : '输入问题，AI 将生成思维导图...'"
+            :placeholder="targetNode ? `针对「${targetNode.text}」提问，AI 将扩展子节点...` : (hasExistingMap ? '右键点击导图的任意节点，可针对选中节点提问' : '输入问题 AI将生成思维导图')"
             class="chat-input"
             rows="2"
             @keydown.enter.prevent="handleSend"
