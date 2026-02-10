@@ -111,6 +111,7 @@ const emit = defineEmits<{
   (e: 'updateMindMap', data: MindMapNode): void
   (e: 'expandNode', payload: { nodeUid: string, children: MindMapNode[] }): void
   (e: 'clearTargetNode'): void
+  (e: 'messagesUpdated', messages: ChatMessage[]): void
 }>()
 
 // 状态
@@ -222,6 +223,7 @@ async function handleSend() {
     role: 'user',
     content: displayContent
   })
+  emit('messagesUpdated', messages.value)
   userInput.value = ''
   await scrollToBottom()
 
@@ -297,6 +299,7 @@ async function handleSend() {
           role: 'assistant',
           content: `已为节点「${currentTarget.text}」扩展 ${xmlMindMap.children.length} 个子节点 ✓`
         })
+        emit('messagesUpdated', messages.value)
         // 清除目标节点
         emit('clearTargetNode')
       } else {
@@ -305,6 +308,7 @@ async function handleSend() {
           role: 'assistant',
           content: `未能解析子节点，AI 原始回复：\n\n${aiResponse}`
         })
+        emit('messagesUpdated', messages.value)
       }
     } else if (!props.hasExistingMap) {
       // ========== 生成新思维导图模式 ==========
@@ -317,6 +321,7 @@ async function handleSend() {
           role: 'assistant',
           content: '已为您生成思维导图 ✓'
         })
+        emit('messagesUpdated', messages.value)
       } else {
         const simpleMindMap = createSimpleMindMap(aiResponse)
         emit('updateMindMap', simpleMindMap)
@@ -324,6 +329,7 @@ async function handleSend() {
           role: 'assistant',
           content: aiResponse.substring(0, 500) + '...'
         })
+        emit('messagesUpdated', messages.value)
       }
     } else {
       // ========== 普通对话模式 ==========
@@ -355,11 +361,13 @@ async function handleSend() {
           role: 'assistant',
           content: '已为您生成思维导图 ✓\n\n' + aiResponse
         })
+        emit('messagesUpdated', messages.value)
       } else {
         messages.value.push({
           role: 'assistant',
           content: aiResponse
         })
+        emit('messagesUpdated', messages.value)
       }
     }
 
@@ -376,6 +384,15 @@ async function handleSend() {
 
 // 监听消息变化，自动滚动
 watch(messages, scrollToBottom, { deep: true })
+
+// 暴露方法给父组件
+defineExpose({
+  setMessages: (msgs: ChatMessage[]) => {
+    messages.value = msgs
+    scrollToBottom()
+  },
+  getMessages: () => messages.value
+})
 </script>
 
 <style scoped>

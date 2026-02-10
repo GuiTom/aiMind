@@ -18,6 +18,15 @@
 
     <div class="toolbar-divider"></div>
 
+    <!-- 历史记录 -->
+    <div class="toolbar-group">
+      <el-tooltip content="历史对话" placement="bottom">
+        <el-button @click="toggleHistory" :icon="Clock" circle />
+      </el-tooltip>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
     <!-- 节点操作 -->
     <div class="toolbar-group">
       <el-tooltip content="添加子节点 (Tab)" placement="bottom">
@@ -118,7 +127,8 @@ import {
   Plus, CirclePlus, Delete, 
   ZoomIn, ZoomOut, FullScreen,
   Download, ArrowDown, Upload,
-  Document, Files, Picture, ChatLineSquare
+  Document, Files, Picture, ChatLineSquare,
+  Clock
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { exportToJson, exportToXml } from '@/utils/export'
@@ -126,6 +136,10 @@ import type MindMap from 'simple-mind-map'
 
 const props = defineProps<{
   mindMap: MindMap | null
+}>()
+
+const emit = defineEmits<{
+  (e: 'toggleHistory'): void
 }>()
 
 const zoom = ref(1)
@@ -288,6 +302,11 @@ async function handleExport(command: string) {
     ElMessage.error('导出失败，请重试')
     console.error('Export error:', error)
   }
+}
+
+// 历史记录
+function toggleHistory() {
+  emit('toggleHistory')
 }
 
 // 暴露方法给父组件

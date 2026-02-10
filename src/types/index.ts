@@ -27,3 +27,16 @@ export interface ExportOptions {
     fileName?: string
     padding?: number
 }
+
+export interface ChatMessage {
+    role: 'system' | 'user' | 'assistant'
+    content: string
+}
+
+export interface Conversation {
+    id: string
+    title: string
+    timestamp: number
+    messages: ChatMessage[]
+    mindMapData: MindMapNode | null
+}

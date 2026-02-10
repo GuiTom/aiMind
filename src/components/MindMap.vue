@@ -90,10 +90,11 @@ onMounted(() => {
 
 // 监听 modelValue 变化，更新脑图数据
 watch(() => props.modelValue, (newData) => {
-  if (newData && mindMap) {
+  if (mindMap) { // 只要实例存在就尝试更新
     console.log('更新脑图数据:', newData)
     isSettingData = true
-    mindMap.setData(newData)
+    // 如果没有数据（如新对话），则重置为默认数据
+    mindMap.setData(newData || defaultData)
     // 延迟居中显示
     setTimeout(() => {
       if (mindMap) {
@@ -188,6 +189,14 @@ function showContextMenu(node: any, e: MouseEvent) {
 
   const menuItems = [
     {
+      label: '💬 针对此节点提问',
+      action: () => {
+        const text = node.getData('text') || '节点'
+        const uid = node.getData('uid') || node.uid || ''
+        emit('askAboutNode', { uid, text })
+      }
+    },
+    {
       label: '添加子节点',
       action: () => {
         mindMap?.execCommand('INSERT_CHILD_NODE')
@@ -212,14 +221,6 @@ function showContextMenu(node: any, e: MouseEvent) {
       label: '添加/编辑注释',
       action: () => {
         emit('openNote', node)
-      }
-    },
-    {
-      label: '💬 针对此节点提问',
-      action: () => {
-        const text = node.getData('text') || '节点'
-        const uid = node.getData('uid') || node.uid || ''
-        emit('askAboutNode', { uid, text })
       }
     }
   ]
@@ -346,6 +347,9 @@ function expandNodeChildren(nodeUid: string, newChildren: MindMapNode[]) {
   if (findAndExpandNode(data, nodeUid, newChildren)) {
     isSettingData = true
     mindMap.setData(data)
+    // 手动触发更新，因为 isSettingData=true 会阻止 data_change 监听器
+    emit('update:modelValue', data)
+    
     setTimeout(() => {
       if (mindMap) {
         mindMap.view.fit()
