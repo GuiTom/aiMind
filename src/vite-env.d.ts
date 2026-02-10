@@ -29,3 +29,14 @@ declare module 'simple-mind-map/src/plugins/Export.js' {
     const Export: any
     export default Export
 }
+
+interface ImportMetaEnv {
+    readonly VITE_OPENROUTER_API_KEY?: string
+    readonly VITE_AI_MODEL?: string
+}
+
+interface ImportMeta {
+    readonly env: ImportMetaEnv
+}
+
+

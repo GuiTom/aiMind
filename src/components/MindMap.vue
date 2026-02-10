@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import MindMap from 'simple-mind-map'
 import Export from 'simple-mind-map/src/plugins/Export.js'
 import type { MindMapNode } from '@/types'
@@ -40,10 +40,12 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: MindMapNode): void
   (e: 'mindMapReady', mindMap: MindMap): void
   (e: 'openNote', node: any): void
+  (e: 'askAboutNode', info: { uid: string, text: string }): void
 }>()
 
 const containerRef = ref<HTMLElement>()
 let mindMap: MindMap | null = null
+let isSettingData = false
 
 // 注释浮层状态
 const notePopupVisible = ref(false)
@@ -86,6 +88,22 @@ onMounted(() => {
   }, 300)
 })
 
+// 监听 modelValue 变化，更新脑图数据
+watch(() => props.modelValue, (newData) => {
+  if (newData && mindMap) {
+    console.log('更新脑图数据:', newData)
+    isSettingData = true
+    mindMap.setData(newData)
+    // 延迟居中显示
+    setTimeout(() => {
+      if (mindMap) {
+        mindMap.view.fit()
+      }
+      isSettingData = false
+    }, 300)
+  }
+}, { deep: true })
+
 onUnmounted(() => {
   if (mindMap) {
     mindMap.destroy()
@@ -121,6 +139,7 @@ function initMindMap() {
 
   // 监听数据变化
   mindMap.on('data_change', (data: MindMapNode) => {
+    if (isSettingData) return
     emit('update:modelValue', data)
   })
 
@@ -193,6 +212,14 @@ function showContextMenu(node: any, e: MouseEvent) {
       label: '添加/编辑注释',
       action: () => {
         emit('openNote', node)
+      }
+    },
+    {
+      label: '💬 针对此节点提问',
+      action: () => {
+        const text = node.getData('text') || '节点'
+        const uid = node.getData('uid') || node.uid || ''
+        emit('askAboutNode', { uid, text })
       }
     }
   ]
@@ -294,9 +321,46 @@ function closeNotePopup(e?: Event) {
   document.removeEventListener('click', closeNotePopup)
 }
 
+// 在数据树中递归查找节点并追加子节点
+function findAndExpandNode(node: any, targetUid: string, newChildren: MindMapNode[]): boolean {
+  if (node.data?.uid === targetUid) {
+    if (!node.children) node.children = []
+    node.children.push(...newChildren)
+    return true
+  }
+  if (node.children) {
+    for (const child of node.children) {
+      if (findAndExpandNode(child, targetUid, newChildren)) return true
+    }
+  }
+  return false
+}
+
+// 扩展指定节点的子节点
+function expandNodeChildren(nodeUid: string, newChildren: MindMapNode[]) {
+  if (!mindMap) return
+
+  const data = mindMap.getData()
+  console.log('扩展节点:', nodeUid, '添加子节点:', newChildren)
+
+  if (findAndExpandNode(data, nodeUid, newChildren)) {
+    isSettingData = true
+    mindMap.setData(data)
+    setTimeout(() => {
+      if (mindMap) {
+        mindMap.view.fit()
+      }
+      isSettingData = false
+    }, 300)
+  } else {
+    console.warn('未找到目标节点 uid:', nodeUid)
+  }
+}
+
 // 暴露方法给父组件
 defineExpose({
-  getMindMap: () => mindMap
+  getMindMap: () => mindMap,
+  expandNodeChildren
 })
 </script>
 
