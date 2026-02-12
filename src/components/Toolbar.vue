@@ -27,6 +27,18 @@
 
     <div class="toolbar-divider"></div>
 
+    <!-- 撤销/重做 -->
+    <div class="toolbar-group">
+      <el-tooltip content="撤销 (Ctrl+Z)" placement="bottom">
+        <el-button @click="undo" :icon="RefreshLeft" circle />
+      </el-tooltip>
+      <el-tooltip content="重做 (Ctrl+Y)" placement="bottom">
+        <el-button @click="redo" :icon="RefreshRight" circle />
+      </el-tooltip>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
     <!-- 节点操作 -->
     <div class="toolbar-group">
       <el-tooltip content="添加子节点 (Tab)" placement="bottom">
@@ -128,7 +140,7 @@ import {
   ZoomIn, ZoomOut, FullScreen,
   Download, ArrowDown, Upload,
   Document, Files, Picture, ChatLineSquare,
-  Clock
+  Clock, RefreshLeft, RefreshRight
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { exportToJson, exportToXml } from '@/utils/export'
@@ -307,6 +319,17 @@ async function handleExport(command: string) {
 // 历史记录
 function toggleHistory() {
   emit('toggleHistory')
+}
+
+// 撤销/重做
+function undo() {
+  if (!props.mindMap) return
+  props.mindMap.execCommand('BACK')
+}
+
+function redo() {
+  if (!props.mindMap) return
+  props.mindMap.execCommand('FORWARD')
 }
 
 // 暴露方法给父组件

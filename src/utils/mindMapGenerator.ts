@@ -54,7 +54,7 @@ export function splitTextForNode(text: string): { nodeText: string; note?: strin
     }
 
     // 文本太长，需要分割
-    const { hanziCount, wordCount } = getTextLength(trimmedText)
+    const { hanziCount } = getTextLength(trimmedText)
 
     // 优先按句子分割（句号、问号、感叹号）
     const sentences = trimmedText.split(/([。！？.!?])/g)

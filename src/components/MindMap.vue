@@ -1,6 +1,6 @@
 <template>
-  <div class="mind-map-container" ref="containerRef">
-    <div id="mindMapContainer"></div>
+  <div class="mind-map-container">
+    <div ref="mindMapContainerRef" class="mind-map-el"></div>
     
     <!-- 注释浮层 -->
     <div 
@@ -43,9 +43,11 @@ const emit = defineEmits<{
   (e: 'askAboutNode', info: { uid: string, text: string }): void
 }>()
 
-const containerRef = ref<HTMLElement>()
+
+const mindMapContainerRef = ref<HTMLElement>()
 let mindMap: MindMap | null = null
 let isSettingData = false
+let lastEmittedData: MindMapNode | null = null
 
 // 注释浮层状态
 const notePopupVisible = ref(false)
@@ -91,6 +93,16 @@ onMounted(() => {
 // 监听 modelValue 变化，更新脑图数据
 watch(() => props.modelValue, (newData) => {
   if (mindMap) { // 只要实例存在就尝试更新
+    // 如果新数据与上次发出的数据相同（引用或内容），或者是由于本地操作导致的变化，则忽略更新
+    if (newData === lastEmittedData) {
+      return
+    }
+    
+    // 如果内容也相同，也跳过（深度比较可能昂贵，但为了准确性）
+    if (lastEmittedData && JSON.stringify(newData) === JSON.stringify(lastEmittedData)) {
+      return
+    }
+
     console.log('更新脑图数据:', newData)
     isSettingData = true
     // 如果没有数据（如新对话），则重置为默认数据
@@ -113,7 +125,7 @@ onUnmounted(() => {
 })
 
 function initMindMap() {
-  const container = document.getElementById('mindMapContainer')
+  const container = mindMapContainerRef.value
   if (!container) return
 
   mindMap = new MindMap({
@@ -141,6 +153,7 @@ function initMindMap() {
   // 监听数据变化
   mindMap.on('data_change', (data: MindMapNode) => {
     if (isSettingData) return
+    lastEmittedData = data
     emit('update:modelValue', data)
   })
 
@@ -361,10 +374,24 @@ function expandNodeChildren(nodeUid: string, newChildren: MindMapNode[]) {
   }
 }
 
+// 撤销
+function undo() {
+  if (!mindMap) return
+  mindMap.execCommand('BACK')
+}
+
+// 重做
+function redo() {
+  if (!mindMap) return
+  mindMap.execCommand('FORWARD')
+}
+
 // 暴露方法给父组件
 defineExpose({
   getMindMap: () => mindMap,
-  expandNodeChildren
+  expandNodeChildren,
+  undo,
+  redo
 })
 </script>
 
@@ -375,7 +402,7 @@ defineExpose({
   position: relative;
 }
 
-#mindMapContainer {
+#mindMapContainer, .mind-map-el {
   width: 100%;
   height: 100%;
 }
