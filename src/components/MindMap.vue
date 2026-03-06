@@ -168,10 +168,10 @@ function initMindMap() {
   // 通知父组件 mindMap 实例已就绪
   emit('mindMapReady', mindMap)
 
-  // 延迟显示，避免初始位置跳动
+  // 延迟显示，等待 fit 动画完成
   setTimeout(() => {
     isReady.value = true
-  }, 100)
+  }, 350)
 }
 
 // 自定义右键菜单
@@ -400,12 +400,11 @@ defineExpose({
   width: 100%;
   height: 100%;
   position: relative;
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  visibility: hidden;
 }
 
 .mind-map-container.is-ready {
-  opacity: 1;
+  visibility: visible;
 }
 
 #mindMapContainer, .mind-map-el {
