@@ -1,5 +1,5 @@
 <template>
-  <div class="mind-map-container">
+  <div class="mind-map-container" :class="{ 'is-ready': isReady }">
     <div ref="mindMapContainerRef" class="mind-map-el"></div>
     
     <!-- 注释浮层 -->
@@ -48,6 +48,7 @@ const mindMapContainerRef = ref<HTMLElement>()
 let mindMap: MindMap | null = null
 let isSettingData = false
 let lastEmittedData: MindMapNode | null = null
+const isReady = ref(false)
 
 // 注释浮层状态
 const notePopupVisible = ref(false)
@@ -82,12 +83,6 @@ const defaultData: MindMapNode = {
 
 onMounted(() => {
   initMindMap()
-  // 在组件完全挂载后使用 300ms 延迟调用 fit()，确保 elRect 已更新
-  setTimeout(() => {
-    if (mindMap) {
-      mindMap.view.fit()
-    }
-  }, 300)
 })
 
 // 监听 modelValue 变化，更新脑图数据
@@ -172,6 +167,11 @@ function initMindMap() {
 
   // 通知父组件 mindMap 实例已就绪
   emit('mindMapReady', mindMap)
+
+  // 延迟显示，避免初始位置跳动
+  setTimeout(() => {
+    isReady.value = true
+  }, 100)
 }
 
 // 自定义右键菜单
@@ -400,6 +400,12 @@ defineExpose({
   width: 100%;
   height: 100%;
   position: relative;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.mind-map-container.is-ready {
+  opacity: 1;
 }
 
 #mindMapContainer, .mind-map-el {
