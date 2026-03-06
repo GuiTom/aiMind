@@ -25,6 +25,9 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import MindMap from 'simple-mind-map'
 import Export from 'simple-mind-map/src/plugins/Export.js'
 import type { MindMapNode } from '@/types'
+import { createAIService } from '@/services/aiService'
+import { detectAndParseMindMap } from '@/utils/xmlMindMapParser'
+import { ElMessage } from 'element-plus'
 
 // 注册导出插件
 // @ts-ignore - usePlugin 方法在运行时存在，但类型定义中缺失
@@ -177,6 +180,117 @@ function initMindMap() {
 // 自定义右键菜单
 let contextMenuEl: HTMLElement | null = null
 
+// AI分解节点
+async function handleAIDecompose(node: any) {
+  const nodeText = node.getData('text') || '节点'
+  const uid = node.getData('uid') || node.uid || ''
+
+  const apiKey = localStorage.getItem('openrouter_api_key')
+  if (!apiKey) {
+    ElMessage.warning('请先配置 OpenRouter API Key')
+    return
+  }
+
+  const aiService = createAIService(apiKey)
+  if (!aiService) {
+    ElMessage.error('无法创建 AI 服务')
+    return
+  }
+
+  ElMessage.info('正在分析知识点...')
+
+  try {
+    const decomposePrompt = `请分析「${nodeText}」这个主题，将其分解为 3-6 个核心知识点或子主题。
+
+要求：
+1. 每个知识点应该简洁明了，控制在 15 个汉字以内
+2. 返回 FreeMind XML 格式的思维导图
+3. 根节点的 TEXT 为「${nodeText}」，其下的 node 就是分解出的知识点
+4. 可以有一级或多级子节点
+5. 只返回 XML，不要额外解释
+
+返回格式示例：
+\`\`\`xml
+<map>
+  <node TEXT="${nodeText}">
+    <node TEXT="知识点1"/>
+    <node TEXT="知识点2">
+      <node TEXT="细节1"/>
+      <node TEXT="细节2"/>
+    </node>
+    <node TEXT="知识点3"/>
+  </node>
+</map>
+\`\`\``
+
+    const response = await aiService.chat([
+      {
+        role: 'system',
+        content: '你是一个知识分解助手。用户会提供一个主题，你需要将其分解为多个知识点，以 FreeMind XML 格式返回。'
+      },
+      {
+        role: 'user',
+        content: decomposePrompt
+      }
+    ])
+
+    console.log('AI分解回复:', response.content)
+
+    // 解析 XML 获取子节点
+    const parsedData = detectAndParseMindMap(response.content)
+    console.log('解析结果:', parsedData)
+
+    if (parsedData && parsedData.children && parsedData.children.length > 0) {
+      // 替换节点的子节点
+      replaceNodeChildren(uid, parsedData.children)
+      ElMessage.success(`已将「${nodeText}」分解为 ${parsedData.children.length} 个知识点`)
+    } else {
+      ElMessage.warning('未能解析知识点，请重试')
+    }
+  } catch (error: any) {
+    console.error('AI分解失败:', error)
+    ElMessage.error(error.message || 'AI分解失败，请重试')
+  }
+}
+
+// 替换指定节点的子节点（完全替换）
+function replaceNodeChildren(nodeUid: string, newChildren: MindMapNode[]) {
+  if (!mindMap) return
+
+  const data = mindMap.getData()
+
+  // 递归查找并替换子节点
+  function findAndReplace(node: any): boolean {
+    if (node.data?.uid === nodeUid || node.uid === nodeUid) {
+      // 找到目标节点，替换其子节点
+      node.children = newChildren
+      return true
+    }
+    if (node.children) {
+      for (const child of node.children) {
+        if (findAndReplace(child)) return true
+      }
+    }
+    return false
+  }
+
+  if (findAndReplace(data)) {
+    isSettingData = true
+    mindMap.setData(data)
+    // 手动触发更新
+    emit('update:modelValue', data)
+
+    setTimeout(() => {
+      if (mindMap) {
+        mindMap.view.fit()
+      }
+      isSettingData = false
+    }, 300)
+  } else {
+    console.warn('未找到目标节点 uid:', nodeUid)
+  }
+}
+
 function showContextMenu(node: any, e: MouseEvent) {
   // 移除旧菜单
   if (contextMenuEl) {
@@ -201,6 +315,12 @@ function showContextMenu(node: any, e: MouseEvent) {
   `
 
   const menuItems = [
+    {
+      label: '🤖 AI分解',
+      action: () => {
+        handleAIDecompose(node)
+      }
+    },
     {
       label: '💬 针对此节点提问',
       action: () => {

@@ -144,7 +144,9 @@ export function createAIService(
     modelName?: string
 ): AIService | null {
     const key = apiKey || import.meta.env.VITE_OPENROUTER_API_KEY
-    const model = modelName || import.meta.env.VITE_AI_MODEL || 'openai/gpt-3.5-turbo'
+    const model = modelName || import.meta.env.VITE_AI_MODEL || 'deepseek/deepseek-chat'
+
+    console.log('[AI Service] Using model:', model)
 
     if (!key) {
         console.warn('未配置 OpenRouter API Key')
