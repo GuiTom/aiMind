@@ -414,7 +414,7 @@ defineExpose({
 
 /* simple-mind-map 主题覆盖 */
 :deep(.smm-node) {
-  transition: all 0.2s ease;
+  transition: filter 0.2s ease;
 }
 
 :deep(.smm-node:hover) {
