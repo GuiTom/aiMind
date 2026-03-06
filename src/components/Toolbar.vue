@@ -91,6 +91,10 @@
             <el-icon><Files /></el-icon>
             导出为 XML
           </el-dropdown-item>
+          <el-dropdown-item command="markdown">
+            <el-icon><Document /></el-icon>
+            导出为 Markdown
+          </el-dropdown-item>
           <el-dropdown-item command="png" divided>
             <el-icon><Picture /></el-icon>
             导出为图片 (PNG)
@@ -99,16 +103,29 @@
       </template>
     </el-dropdown>
     
-    <el-tooltip content="导入 AIM/JSON 文件" placement="bottom">
-      <el-button @click="triggerImport">
+    <el-dropdown trigger="click" @command="handleImportCommand">
+      <el-button>
         <el-icon><Upload /></el-icon>
         导入
+        <el-icon class="el-icon--right"><ArrowDown /></el-icon>
       </el-button>
-    </el-tooltip>
+      <template #dropdown>
+        <el-dropdown-menu>
+          <el-dropdown-item command="aim">
+            <el-icon><Files /></el-icon>
+            导入 AIM/JSON 文件
+          </el-dropdown-item>
+          <el-dropdown-item command="markdown">
+            <el-icon><Document /></el-icon>
+            导入 Markdown 文件
+          </el-dropdown-item>
+        </el-dropdown-menu>
+      </template>
+    </el-dropdown>
     <input 
       ref="fileInputRef" 
       type="file" 
-      accept=".aim,.json" 
+      accept=".aim,.json,.md" 
       @change="handleImport" 
       style="display: none"
     />
@@ -146,7 +163,7 @@ import {
   Clock, RefreshLeft, RefreshRight
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { exportToJson, exportToXml } from '@/utils/export'
+import { exportToJson, exportToXml, exportToMarkdown, parseMarkdown } from '@/utils/export'
 import type MindMap from 'simple-mind-map'
 
 const props = defineProps<{
@@ -168,6 +185,7 @@ const fileInputRef = ref<HTMLInputElement>()
 const noteDialogVisible = ref(false)
 const noteText = ref('')
 const currentNode = ref<any>(null)
+const importType = ref<'aim' | 'markdown'>('aim')
 
 // 节点操作
 function addChild() {
@@ -256,7 +274,8 @@ function openNoteDialogWithNode(node: any) {
 }
 
 // 导入功能
-function triggerImport() {
+function handleImportCommand(command: string) {
+  importType.value = command as 'aim' | 'markdown'
   fileInputRef.value?.click()
 }
 
@@ -267,11 +286,22 @@ async function handleImport(event: Event) {
 
   try {
     const text = await file.text()
-    const data = JSON.parse(text)
     
-    // 设置新数据
-    props.mindMap.setData(data)
-    ElMessage.success('导入成功')
+    if (importType.value === 'markdown') {
+      // 导入 Markdown 文件
+      const data = parseMarkdown(text)
+      if (data) {
+        props.mindMap.setData(data)
+        ElMessage.success('Markdown 文件导入成功')
+      } else {
+        ElMessage.error('Markdown 文件解析失败')
+      }
+    } else {
+      // 导入 AIM/JSON 文件
+      const data = JSON.parse(text)
+      props.mindMap.setData(data)
+      ElMessage.success('文件导入成功')
+    }
     
     // 清空文件输入
     if (fileInputRef.value) {
@@ -312,6 +342,10 @@ async function handleExport(command: string) {
       case 'xml':
         exportToXml(data, fileName)
         ElMessage.success('XML 文件已导出')
+        break
+      case 'markdown':
+        exportToMarkdown(data, fileName)
+        ElMessage.success('Markdown 文件已导出')
         break
       case 'png':
         // 直接使用 simple-mind-map 的导出功能，第二个参数 true 表示直接下载
