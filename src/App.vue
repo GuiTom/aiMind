@@ -1,7 +1,7 @@
 <template>
   <div class="app-container">
     <!-- 工具栏 -->
-    <Toolbar ref="toolbarRef" :mindMap="mindMap" @toggleHistory="historyVisible = true" />
+    <Toolbar ref="toolbarRef" :mindMap="mindMap" @toggleHistory="historyVisible = true" @createNewChat="createNewChat" />
     
     <!-- 主内容区：脑图、聊天框、快捷键提示 -->
     <div class="main-content">

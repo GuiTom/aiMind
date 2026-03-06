@@ -18,8 +18,11 @@
 
     <div class="toolbar-divider"></div>
 
-    <!-- 历史记录 -->
+    <!-- 新对话和历史记录 -->
     <div class="toolbar-group">
+      <el-tooltip content="新对话" placement="bottom">
+        <el-button @click="createNewChat" :icon="Plus" circle />
+      </el-tooltip>
       <el-tooltip content="历史对话" placement="bottom">
         <el-button @click="toggleHistory" :icon="Clock" circle />
       </el-tooltip>
@@ -152,7 +155,13 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'toggleHistory'): void
+  (e: 'createNewChat'): void
 }>()
+
+// 新建会话
+function createNewChat() {
+  emit('createNewChat')
+}
 
 const zoom = ref(1)
 const fileInputRef = ref<HTMLInputElement>()
