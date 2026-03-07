@@ -60,12 +60,9 @@
 
     <div class="toolbar-divider"></div>
 
-    <!-- 缩放控制 -->
+    <!-- 缩放显示 -->
     <div class="zoom-controls">
-      <el-button circle size="small" @click="zoomOut" :icon="ZoomOut" />
       <span class="zoom-text">{{ Math.round(zoom * 100) }}%</span>
-      <el-button circle size="small" @click="zoomIn" :icon="ZoomIn" />
-      <el-button circle size="small" @click="fitView" :icon="FullScreen" />
     </div>
 
     <div class="toolbar-divider"></div>
@@ -154,10 +151,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onUnmounted, watch } from 'vue'
 import { 
   Plus, CirclePlus, Delete, 
-  ZoomIn, ZoomOut, FullScreen,
   Download, ArrowDown, Upload,
   Document, Files, Picture, ChatLineSquare,
   Clock, RefreshLeft, RefreshRight
@@ -186,6 +182,45 @@ const noteDialogVisible = ref(false)
 const noteText = ref('')
 const currentNode = ref<any>(null)
 const importType = ref<'aim' | 'markdown'>('aim')
+
+// 监听思维导图缩放变化
+let scaleListenerAttached = false
+
+function attachScaleListener() {
+  if (props.mindMap && !scaleListenerAttached) {
+    props.mindMap.on('scale', onScaleChange)
+    // @ts-ignore - view.scale exists at runtime
+    zoom.value = props.mindMap.view.scale
+    scaleListenerAttached = true
+  }
+}
+
+function detachScaleListener() {
+  if (props.mindMap && scaleListenerAttached) {
+    props.mindMap.off('scale', onScaleChange)
+    scaleListenerAttached = false
+  }
+}
+
+function onScaleChange() {
+  if (props.mindMap) {
+    // @ts-ignore - view.scale exists at runtime
+    zoom.value = props.mindMap.view.scale
+  }
+}
+
+// 监听 mindMap 变化
+watch(() => props.mindMap, (newMindMap) => {
+  if (newMindMap) {
+    attachScaleListener()
+  } else {
+    detachScaleListener()
+  }
+}, { immediate: true })
+
+onUnmounted(() => {
+  detachScaleListener()
+})
 
 // 节点操作
 function addChild() {
@@ -217,39 +252,6 @@ function removeNode() {
   }
   props.mindMap.execCommand('REMOVE_NODE')
   ElMessage.success('节点已删除')
-}
-
-// 缩放控制
-function zoomIn() {
-  console.log('[Toolbar] zoomIn called, mindMap:', props.mindMap)
-  if (!props.mindMap) {
-    ElMessage.warning('思维导图尚未加载完成')
-    return
-  }
-  zoom.value = Math.min(zoom.value + 0.1, 3)
-  console.log('[Toolbar] Setting scale to:', zoom.value)
-  props.mindMap.execCommand('SET_SCALE', zoom.value)
-}
-
-function zoomOut() {
-  console.log('[Toolbar] zoomOut called, mindMap:', props.mindMap)
-  if (!props.mindMap) {
-    ElMessage.warning('思维导图尚未加载完成')
-    return
-  }
-  zoom.value = Math.max(zoom.value - 0.1, 0.3)
-  console.log('[Toolbar] Setting scale to:', zoom.value)
-  props.mindMap.execCommand('SET_SCALE', zoom.value)
-}
-
-function fitView() {
-  console.log('[Toolbar] fitView called, mindMap:', props.mindMap)
-  if (!props.mindMap) {
-    ElMessage.warning('思维导图尚未加载完成')
-    return
-  }
-  props.mindMap.view.fit()
-  zoom.value = 1
 }
 
 // 注释功能
