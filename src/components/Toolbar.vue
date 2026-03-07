@@ -221,19 +221,33 @@ function removeNode() {
 
 // 缩放控制
 function zoomIn() {
-  if (!props.mindMap) return
+  console.log('[Toolbar] zoomIn called, mindMap:', props.mindMap)
+  if (!props.mindMap) {
+    ElMessage.warning('思维导图尚未加载完成')
+    return
+  }
   zoom.value = Math.min(zoom.value + 0.1, 3)
+  console.log('[Toolbar] Setting scale to:', zoom.value)
   props.mindMap.execCommand('SET_SCALE', zoom.value)
 }
 
 function zoomOut() {
-  if (!props.mindMap) return
+  console.log('[Toolbar] zoomOut called, mindMap:', props.mindMap)
+  if (!props.mindMap) {
+    ElMessage.warning('思维导图尚未加载完成')
+    return
+  }
   zoom.value = Math.max(zoom.value - 0.1, 0.3)
+  console.log('[Toolbar] Setting scale to:', zoom.value)
   props.mindMap.execCommand('SET_SCALE', zoom.value)
 }
 
 function fitView() {
-  if (!props.mindMap) return
+  console.log('[Toolbar] fitView called, mindMap:', props.mindMap)
+  if (!props.mindMap) {
+    ElMessage.warning('思维导图尚未加载完成')
+    return
+  }
   props.mindMap.view.fit()
   zoom.value = 1
 }
