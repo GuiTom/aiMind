@@ -105,6 +105,7 @@ import type { MindMapNode } from '@/types'
 const props = defineProps<{
   hasExistingMap: boolean
   targetNode: { uid: string, text: string } | null
+  isMapEdited: boolean
 }>()
 
 const emit = defineEmits<{
@@ -310,8 +311,8 @@ async function handleSend() {
         })
         emit('messagesUpdated', messages.value)
       }
-    } else if (!props.hasExistingMap) {
-      // ========== 生成新思维导图模式 ==========
+    } else if (!props.hasExistingMap && !props.isMapEdited) {
+      // ========== 生成新思维导图模式（仅在未编辑默认脑图时）==========
       aiResponse = await aiService.generateMindMap(input)
 
       const mindMapData = parseAIMindMap(aiResponse)
@@ -331,6 +332,28 @@ async function handleSend() {
         })
         emit('messagesUpdated', messages.value)
       }
+    } else if (props.isMapEdited) {
+      // ========== 脑图已编辑模式 - 只在聊天框显示回复 ==========
+      const chatMessages: ChatMessage[] = [
+        {
+          role: 'system',
+          content: '你是一个专业的助手，简洁准确地回答用户问题。'
+        },
+        ...messages.value.slice(0, -1),
+        {
+          role: 'user',
+          content: input
+        }
+      ]
+
+      const response = await aiService.chat(chatMessages)
+      aiResponse = response.content
+
+      messages.value.push({
+        role: 'assistant',
+        content: aiResponse
+      })
+      emit('messagesUpdated', messages.value)
     } else {
       // ========== 普通对话模式 ==========
       const enhancedInput = input + '\n\n[如果回答有多个分支，请用XML格式。示例: ```xml\n<map><node TEXT="主题"><node TEXT="分支1"/></node></map>\n```]'

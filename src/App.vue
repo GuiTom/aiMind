@@ -20,6 +20,7 @@
       <ChatPanel 
         :hasExistingMap="hasExistingMap"
         :targetNode="targetNode"
+        :isMapEdited="isMapEdited"
         @updateMindMap="onUpdateMindMap"
         @expandNode="onExpandNode"
         @clearTargetNode="onClearTargetNode"
@@ -92,6 +93,7 @@ const toolbarRef = ref<InstanceType<typeof Toolbar>>()
 const mindMapRef = ref<InstanceType<typeof MindMap>>()
 const chatPanelRef = ref<InstanceType<typeof ChatPanel>>()
 const targetNode = ref<{ uid: string, text: string } | null>(null)
+const isMapEdited = ref(false) // 标记脑图是否被编辑过
 
 // 历史会话状态
 const historyVisible = ref(false)
@@ -131,6 +133,9 @@ function switchChat(id: string) {
   if (chatPanelRef.value) {
     (chatPanelRef.value as any).setMessages(conv.messages || [])
   }
+  
+  // 重置编辑标记（新会话的脑图视为未编辑）
+  isMapEdited.value = false
   
   setTimeout(() => {
     isRestoring.value = false
@@ -184,8 +189,12 @@ function debounceSave() {
   saveTimer = setTimeout(saveCurrentSession, 500)
 }
 
-// 监听脑图数据变化 -> 自动保存
+// 监听脑图数据变化 -> 自动保存 & 标记已编辑
 watch(mapData, () => {
+  // 标记脑图为已编辑状态（排除恢复中的情况）
+  if (!isRestoring.value) {
+    isMapEdited.value = true
+  }
   debounceSave()
 }, { deep: true })
 
@@ -213,7 +222,14 @@ function onOpenNote(node: any) {
 
 // AI 更新脑图
 function onUpdateMindMap(data: MindMapNode) {
+  // 临时标记为恢复中，避免触发 isMapEdited
+  isRestoring.value = true
   mapData.value = data
+  // 重置编辑标记（新脑图视为未编辑）
+  isMapEdited.value = false
+  setTimeout(() => {
+    isRestoring.value = false
+  }, 100)
 }
 
 // 针对节点提问
